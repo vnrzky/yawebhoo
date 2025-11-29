@@ -1,5 +1,5 @@
 import express from "express";
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -7,7 +7,12 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages
+  ]
+});
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
@@ -25,18 +30,22 @@ app.post("/webhook", async (req, res) => {
 
     const channel = await client.channels.fetch(CHANNEL_ID);
 
-    await channel.send({
-      embeds: [{
-        title: "🔔 U7BUY Notification",
-        description: `Type: **${payload.type}**\nOrder ID: **${payload.orderId}**\nStatus: **${payload.status}**`,
-        color: 0x00AE86,
-        timestamp: new Date()
-      }]
-    });
+    // Build embed properly
+    const embed = new EmbedBuilder()
+      .setTitle("🔔 U7BUY Notification")
+      .setDescription(
+        `Type: **${payload.type || "N/A"}**\n` +
+        `Order ID: **${payload.orderId || "N/A"}**\n` +
+        `Status: **${payload.status || "N/A"}**`
+      )
+      .setColor(0x00AE86)
+      .setTimestamp();
+
+    await channel.send({ embeds: [embed] });
 
     res.status(200).send("OK");
   } catch (err) {
-    console.error("❌ Error handling webhook:", err.message);
+    console.error("❌ Error handling webhook:", err);
     res.status(500).send("Error");
   }
 });
