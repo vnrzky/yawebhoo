@@ -10,12 +10,16 @@ const APP_SECRET = process.env.U7BUY_APP_SECRET;
 async function getToken() {
   try {
     const res = await axios.post(`${U7BUY_BASE_URL}/auth/token`, {
-      appId: APP_ID,
-      appSecret: APP_SECRET
+      app_id: APP_ID,
+      app_secret: APP_SECRET
     }, {
       headers: { "Content-Type": "application/json" }
     });
-    return res.data.access_token;
+
+    console.log("🔍 Token response:", res.data);
+
+    // Adjust depending on actual response shape
+    return res.data.access_token || res.data.token || res.data.data?.token;
   } catch (err) {
     console.error("❌ Failed to get token:", err.response?.data || err.message);
     throw err;
@@ -49,7 +53,7 @@ async function getOrderDetail(token, orderId) {
 
 async function startDelivery(token, orderId, params) {
   try {
-    const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/start_deliery`, {
+    const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/start_delivery`, {
       orderId,
       ...params
     }, {
@@ -64,7 +68,7 @@ async function startDelivery(token, orderId, params) {
 
 async function completeDelivery(token, orderId) {
   try {
-    const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/complete_deliery`, {
+    const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/complete_delivery`, {
       orderId
     }, {
       headers: { Authorization: `Bearer ${token}` }
@@ -81,6 +85,11 @@ async function main() {
   try {
     const token = await getToken();
     console.log("✅ Got token:", token);
+
+    if (!token) {
+      console.error("❌ No token received. Check APP_ID/APP_SECRET.");
+      return;
+    }
 
     const orders = await listOrders(token);
     console.log("📦 Orders:", orders);
