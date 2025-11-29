@@ -1,59 +1,49 @@
-import express from "express";
-import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
-import dotenv from "dotenv";
+import axios from "axios";
 
-dotenv.config();
+const U7BUY_BASE_URL = "https://openapi.u7buy.com/prod-api";
+const APP_ID = process.env.U7BUY_APP_ID;
+const APP_SECRET = process.env.U7BUY_APP_SECRET;
 
-const app = express();
-app.use(express.json());
+async function getToken() {
+  const res = await axios.post(`${U7BUY_BASE_URL}/auth/token`, {
+    appId: APP_ID,
+    appSecret: APP_SECRET
+  }, {
+    headers: { "Content-Type": "application/json" }
+  });
+  return res.data.access_token;
+}
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages
-  ]
-});
+async function listOrders(token) {
+  const res = await axios.get(`${U7BUY_BASE_URL}/open-api/order/list`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID;
+async function getOrderDetail(token, orderId) {
+  const res = await axios.get(`${U7BUY_BASE_URL}/open-api/order`, {
+    params: { orderId },
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
 
-// --- Discord Bot Startup ---
-client.once("ready", () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
-});
+async function startDelivery(token, orderId, params) {
+  const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/start_deliery`, {
+    orderId,
+    ...params
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
 
-// --- Webhook Endpoint ---
-app.post("/webhook", async (req, res) => {
-  try {
-    const payload = req.body; // U7BUY sends JSON here
-    console.log("📩 Received webhook:", payload);
-
-    const channel = await client.channels.fetch(CHANNEL_ID);
-
-    // Build embed properly
-    const embed = new EmbedBuilder()
-      .setTitle("🔔 U7BUY Notification")
-      .setDescription(
-        `Type: **${payload.type || "N/A"}**\n` +
-        `Order ID: **${payload.orderId || "N/A"}**\n` +
-        `Status: **${payload.status || "N/A"}**`
-      )
-      .setColor(0x00AE86)
-      .setTimestamp();
-
-    await channel.send({ embeds: [embed] });
-
-    res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ Error handling webhook:", err);
-    res.status(500).send("Error");
-  }
-});
-
-// --- Start Express Server ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🌐 Webhook server running on port ${PORT}`);
-});
-
-client.login(DISCORD_TOKEN);
+async function completeDelivery(token, orderId) {
+  const res = await axios.post(`${U7BUY_BASE_URL}/open-api/order/complete_deliery`, {
+    orderId
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return res.data;
+}
